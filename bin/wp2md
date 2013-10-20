@@ -1,0 +1,37 @@
+#!/usr/bin/env perl
+
+# Copyright (C) 2013 Mark Allen
+# This is free software; you can redistribute it and/or modify it under 
+# the same terms as the Perl 5 programming language system itself.
+
+use 5.014;
+use XML::Feed;
+use Path::Tiny;
+use HTML::FormatMarkdown;
+
+my $file = path($ARGV[0])->openr_utf8 or die;
+
+my $feed = XML::Feed->parse($file);
+
+foreach my $item ( $feed->items() ) {
+    next unless $item->author eq 'admin';
+    my $title = $item->title;
+    say "Working on $title";
+    my $filename = $title =~ s/[^a-zA-Z0-9-]/_/gr;
+    my $issued = $item->issued;
+
+    my $content = $item->content->body =~ s/\n\n/<P>\n/grxms; 
+    $content =~ s/<\/strong>\n/<\/strong><P>\n/gxms; 
+    $content =~ s/<\/a>\n/<\/a><P>\n/gxms; 
+    $content =~ s/(<pre>.+)<P>\n(.+<\/pre>)/$1\n\n$2/gxms; 
+
+    my $string = HTML::FormatMarkdown->format_string( $content );
+
+    open my $out, ">", "../md/$filename.md" or die "Couldn't open $filename: $!\n";
+    binmode $out, ":encoding(UTF-8)";
+    print $out "Title: $title\n";
+    print $out "Posted: $issued\n";
+    print $out "\n";
+    print $out "$string\n";
+    close $out or die "Couldn't close $filename: $!\n";
+}
