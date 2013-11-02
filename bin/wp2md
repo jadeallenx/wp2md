@@ -8,17 +8,22 @@ use 5.014;
 use XML::Feed;
 use Path::Tiny;
 use HTML::FormatMarkdown;
+use TOML qw(to_toml);
 
-my $file = path($ARGV[0])->openr_utf8 or die;
+my $file = path($ARGV[0])->openr_utf8 or die "Couldn't open $ARGV[0]: $!\n";
 
 my $feed = XML::Feed->parse($file);
 
 foreach my $item ( $feed->items() ) {
     next unless $item->author eq 'admin';
     my $title = $item->title;
+    my $href->{title} = $title;
+
     say "Working on $title";
     my $filename = $title =~ s/[^a-zA-Z0-9-]/_/gr;
-    my $issued = $item->issued;
+    $href->{content_filename} = $filename;
+    $href->{post_date} = $item->issued . "Z";
+    $href->{author} = "Mark Allen";
 
     my $content = $item->content->body =~ s/\n\n/<P>\n/grxms; 
     $content =~ s/<\/strong>\n/<\/strong><P>\n/gxms; 
@@ -27,11 +32,9 @@ foreach my $item ( $feed->items() ) {
 
     my $string = HTML::FormatMarkdown->format_string( $content );
 
-    open my $out, ">", "../md/$filename.md" or die "Couldn't open $filename: $!\n";
-    binmode $out, ":encoding(UTF-8)";
-    print $out "Title: $title\n";
-    print $out "Posted: $issued\n";
-    print $out "\n";
+    my $out = path("md/$filename.md")->openw_utf8 or die "Couldn't open $filename: $!\n";
+    print $out to_toml($href);
+    print $out "---\n\n";
     print $out "$string\n";
     close $out or die "Couldn't close $filename: $!\n";
 }

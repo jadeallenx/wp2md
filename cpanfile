@@ -5,3 +5,4 @@ requires 'Path::Tiny';
 # until it gets merged upstream
 requires 'HTML::FormatMarkdown';
 requires 'XML::Feed';
+requires 'TOML';
